@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 import axios from "axios";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "utils/hooks/useApp";
+import { LOCAL_STORAGE_KEYS } from "utils/localeStorage";
 
 export const ReactView = () => {
   // get Obsidian app instance using custom hook with context
@@ -11,6 +12,12 @@ export const ReactView = () => {
 
   const [showDisabledTooltip, setShowDisabledTooltip] = useState<boolean>(false);
 
+  useEffect(() => {
+    const lastGeneratedTweets = localStorage.getItem(LOCAL_STORAGE_KEYS.LAST_GENERATED_TWEETS);
+    if (lastGeneratedTweets) {
+      setSyncedTweets(JSON.parse(lastGeneratedTweets));
+    }
+  }, [localStorage]);
 
   const getTweetPrompt = (content: string) => {
     return `
@@ -71,13 +78,19 @@ export const ReactView = () => {
         allTweets.push(...tweets);
       }
     }
+    // save to local storage using LAST_GENERATED_TWEETS
+    localStorage.setItem(LOCAL_STORAGE_KEYS.LAST_GENERATED_TWEETS, JSON.stringify(allTweets));
+
     return allTweets;
   };
 
   const syncFilesAndGenerateTweets = async () => {
     const files = await app?.vault.getMarkdownFiles() ?? [];
+    // the user set the last days modified setting
+    const LAST_DAYS_MODIFIED = localStorage.getItem(LOCAL_STORAGE_KEYS.LAST_DAYS_GENERATED_SETTING) || '1';
+
     // get files modified in last 24 hours
-    const modifiedFiles = files.filter((file) => file.stat.mtime > Date.now() - 1000 * 60 * 60 * 24);
+    const modifiedFiles = files.filter((file) => file.stat.mtime > Date.now() - 1000 * 60 * 60 * 24 * parseInt(LAST_DAYS_MODIFIED));
     // get file contents
     const fileContents = await Promise.all(modifiedFiles.map((file) => app?.vault.read(file)));
 
@@ -110,8 +123,19 @@ export const ReactView = () => {
           id="openai-key"
           type="text"
           placeholder="OpenAI key"
-          defaultValue={localStorage.getItem('openai-key') || ''}
-          onChange={(e) => localStorage.setItem('openai-key', e.target.value)}
+          defaultValue={localStorage.getItem(LOCAL_STORAGE_KEYS.OPENAI_KEY) || ''}
+          onChange={(e) => localStorage.setItem(LOCAL_STORAGE_KEYS.OPENAI_KEY, e.target.value)}
+          style={{ flex: 1, padding: "5px" }}
+        />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", marginTop: "10px" }}>
+        <label htmlFor="openai-key" style={{ marginRight: "10px" }}>Sync Files Modified In Last N Days:</label>
+        <input
+          id="lastModifiedDays"
+          type="number"
+          placeholder="1"
+          defaultValue={localStorage.getItem(LOCAL_STORAGE_KEYS.LAST_DAYS_GENERATED_SETTING) || ''}
+          onChange={(e) => localStorage.setItem(LOCAL_STORAGE_KEYS.LAST_DAYS_GENERATED_SETTING, e.target.value)}
           style={{ flex: 1, padding: "5px" }}
         />
       </div>

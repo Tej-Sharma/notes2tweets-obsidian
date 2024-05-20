@@ -21,7 +21,7 @@ export default class MyPlugin extends Plugin {
 
 
 		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('twitter', 'Open Notes2Tweets', (evt: MouseEvent) => {
+		this.addRibbonIcon('twitter', 'Open Notes2Tweets', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
 			this.activateView();
 		});
@@ -35,25 +35,7 @@ export default class MyPlugin extends Plugin {
 			}
 		})
 
-		this.listenForFileChanges();
 	}
-
-	/**
-	 * Track modified files in local storage for last sync handling
-	 */
-	listenForFileChanges() {
-		this.app.vault.on('modify', (file) => {
-			const FILES_CHANGED_SINCE_LAST_SYNC_KEY = LOCAL_STORAGE_KEYS.FILES_CHANGED_SINCE_LAST_SYNC_KEY;
-			let filesChangedSinceLastSync = JSON.parse(localStorage.getItem(FILES_CHANGED_SINCE_LAST_SYNC_KEY) || '[]');
-			this.app.vault.on('modify', (file) => {
-					filesChangedSinceLastSync.push(file?.name);
-					// update in local storage
-					localStorage.setItem(FILES_CHANGED_SINCE_LAST_SYNC_KEY, JSON.stringify(filesChangedSinceLastSync));
-			});
-		});
-	}
-
-
 
 	// on disabled
 	onunload() {
