@@ -1,3 +1,4 @@
+import OpenAI from "openai";
 import axios from "axios";
 import { useState } from "react";
 import { useApp } from "utils/hooks/useApp";
@@ -6,18 +7,71 @@ export const ReactView = () => {
   // get Obsidian app instance using custom hook with context
   const app = useApp();
 
-  const [syncedTweets, setSyncedTweets] = useState<string[]>(["bob"]);
+  const [syncedTweets, setSyncedTweets] = useState<string[]>([]);
 
   const [showDisabledTooltip, setShowDisabledTooltip] = useState<boolean>(false);
 
-  const generateTweets = async (fileContents: (string | undefined)[]) => {
+
+  const getTweetPrompt = (content: string) => {
+    return `
+    Based on the content below, think about what are tweets that have a high chance of going viral.
+    And I only want to generate tweets related to deep philosophical points that are very curiosity arising.
+    Only generate tweets for content that would have an alarming hook that taps into a strong human emotion.
+    Otherwise, ignore the content and do not generate tweets.
+    The tweet should be a maximum of 30 words and should be short, concise, and revealing great information after building on the hook
+    in a way that it is very profound and makes the reader feel they have learnt something meaningful that can help them a lot.
+    Here is the content:
+    ${content}
+    Give me back a list of tweet strings as a JSON array. It will be parsed by Python's JSON library.
+    ` + '\nReturn in the format: {"tweets": ["tweet1", "tweet2", "tweet3", ...]}';
+  };
+
+  const generateTweetsFromFileContent = async (content: string) => {
+    const openaiKey = localStorage.getItem('openai-key');
+    if (!openaiKey) {
+      console.error("OpenAI key is not set in local storage.");
+      return [];
+    }
+
+    const openai = new OpenAI({
+      apiKey: openaiKey,
+      dangerouslyAllowBrowser: true 
+    });
+
+    const inputPrompt = getTweetPrompt(content);
+
     try {
-      const response = await axios.post("http://127.0.0.1:8000/notes2tweets/generate-tweets", { file_contents: fileContents });
-      return response.data?.tweets;
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: inputPrompt }],
+        max_tokens: 300,
+        temperature: 0.8,
+      });
+
+      const initialPromptOutput = response.choices[0].message.content;
+
+      if (!initialPromptOutput) {
+        return [];
+      }
+      const initialPromptOutputJson = JSON.parse(initialPromptOutput);
+      const tweets = initialPromptOutputJson.tweets || [];
+
+      return tweets;
     } catch (error) {
       console.error("Error generating tweets:", error);
-      return null;
+      return [];
     }
+  };
+
+  const generateTweets = async (fileContents: (string | undefined)[]) => {
+    const allTweets = [];
+    for (const content of fileContents) {
+      if (content) {
+        const tweets = await generateTweetsFromFileContent(content);
+        allTweets.push(...tweets);
+      }
+    }
+    return allTweets;
   };
 
   const syncFilesAndGenerateTweets = async () => {
@@ -65,6 +119,9 @@ export const ReactView = () => {
       <hr />
       <div style={{
         marginTop: "20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "20px",
       }}>
         {syncedTweets.map((tweet, index) => (
           <div key={index} style={{

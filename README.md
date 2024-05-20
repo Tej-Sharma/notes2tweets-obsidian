@@ -1,4 +1,8 @@
-# Obsidian Sample Plugin
+# Notes2Tweets
+
+This was generated using the sample plugin for Obsidian GitHub repo.
+
+## Docs from sample plugin repo:
 
 This is a sample plugin for Obsidian (https://obsidian.md).
 
