@@ -14,6 +14,8 @@ export const ReactView = () => {
 
   // actual generated tweets
   const [syncedTweets, setSyncedTweets] = useState<string[]>([]);
+  const [syncingTweet, setSyncingTweet] = useState<boolean>(false);
+
   // whether is connected to twitter
   const [needsTwitterConnection, setNeedsTwitterConnection] = useState<boolean>(false);
 
@@ -115,22 +117,30 @@ export const ReactView = () => {
     return allTweets;
   };
 
-  const syncFilesAndGenerateTweets = async () => {
-    const files = await app?.vault.getMarkdownFiles() ?? [];
-    // the user set the last days modified setting
-    const LAST_DAYS_MODIFIED = localStorage.getItem(LOCAL_STORAGE_KEYS.LAST_DAYS_GENERATED_SETTING) || '1';
+  const syncFilesAndGenerateTweets = async () =>  {
+    setSyncingTweet(true);
+    
+    try {
+      const files = await app?.vault.getMarkdownFiles() ?? [];
+      // the user set the last days modified setting
+      const LAST_DAYS_MODIFIED = localStorage.getItem(LOCAL_STORAGE_KEYS.LAST_DAYS_GENERATED_SETTING) || '1';
 
-    // get files modified in last 24 hours
-    const modifiedFiles = files.filter((file) => file.stat.mtime > Date.now() - 1000 * 60 * 60 * 24 * parseInt(LAST_DAYS_MODIFIED));
-    // get file contents
-    const fileContents = await Promise.all(modifiedFiles.map((file) => app?.vault.read(file)));
+      // get files modified in last 24 hours
+      const modifiedFiles = files.filter((file) => file.stat.mtime > Date.now() - 1000 * 60 * 60 * 24 * parseInt(LAST_DAYS_MODIFIED));
+      // get file contents
+      const fileContents = await Promise.all(modifiedFiles.map((file) => app?.vault.read(file)));
 
-    const successfulFileContents = fileContents.filter(content => content !== null && content !== undefined);
+      const successfulFileContents = fileContents.filter(content => content !== null && content !== undefined);
 
-    const tweets = await generateTweets(successfulFileContents);
-    setSyncedTweets(tweets ?? []);
+      const tweets = await generateTweets(successfulFileContents);
+      setSyncedTweets(tweets ?? []);
+      
+    } catch (error) {
+      console.error("Error syncing files and generating tweets:", error);
+    }
 
-    return modifiedFiles;
+    setSyncingTweet(false);
+
   }
 
   const deleteAllTweets = () => {
@@ -263,7 +273,13 @@ export const ReactView = () => {
         />
       </div>
       <div style={{ display: "flex", alignItems: "center", marginTop: "10px", gap: "10px" }}>
-        <button onClick={() => syncFilesAndGenerateTweets()} style={{marginTop: "20px", cursor: "pointer"}}>Start Syncing</button>
+        <button 
+          onClick={() => syncFilesAndGenerateTweets()} 
+          style={{marginTop: "20px", cursor: "pointer"}}
+          disabled={syncingTweet}
+        >
+          {syncingTweet ? "Syncing..." : "Start Syncing"}
+        </button>
         {needsTwitterConnection && <button onClick={() => startTwitterConnection()} style={{marginTop: "20px", cursor: "pointer"}}>
           Connect Twitter (X)
         </button>}
@@ -307,7 +323,7 @@ export const ReactView = () => {
             border: "1px solid #ccc",
             borderRadius: "5px",
           }}>
-            <p style={{ fontStyle: "italic", letterSpacing: "0.1em", fontSize: "1.5rem" }}>{tweet}</p>
+            <p style={{ fontStyle: "italic", letterSpacing: "0.1em" }}>{tweet}</p>
             <div 
               style={{
                 display: "flex",
