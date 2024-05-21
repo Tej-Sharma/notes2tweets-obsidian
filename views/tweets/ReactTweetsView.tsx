@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useApp } from "utils/hooks/useApp";
 import { LOCAL_STORAGE_KEYS } from "utils/localeStorage";
 
-export const ReactView = () => {
+export const ReactTweetsView = () => {
   // get Obsidian app instance using custom hook with context
   const app = useApp();
 
   const [syncedTweets, setSyncedTweets] = useState<string[]>([]);
+  const [generatingTweets, setGeneratingTweets] = useState<boolean>(false);
 
   const [showDisabledTooltip, setShowDisabledTooltip] = useState<boolean>(false);
 
@@ -37,6 +38,7 @@ export const ReactView = () => {
     const openaiKey = localStorage.getItem('openai-key');
     if (!openaiKey) {
       console.error("OpenAI key is not set in local storage.");
+      alert("OpenAI key is not set");
       return [];
     }
 
@@ -85,6 +87,8 @@ export const ReactView = () => {
   };
 
   const syncFilesAndGenerateTweets = async () => {
+    setGeneratingTweets(true);
+
     const files = await app?.vault.getMarkdownFiles() ?? [];
     // the user set the last days modified setting
     const LAST_DAYS_MODIFIED = localStorage.getItem(LOCAL_STORAGE_KEYS.LAST_DAYS_GENERATED_SETTING) || '1';
@@ -99,24 +103,18 @@ export const ReactView = () => {
     const tweets = await generateTweets(successfulFileContents);
     setSyncedTweets(tweets ?? []);
 
+    setGeneratingTweets(false);
+
     return modifiedFiles;
   }
 
   // TODO: schedule tweets
-  const scheduleTweet = async (tweet: string) => {
-    try {
-      const response = await axios.post("http://127.0.0.1:8000/notes2tweets/schedule-tweet", { tweet: tweet });
-      console.log(response.data);
-    } catch (error) {
-      console.error("Error generating tweets:", error);
-      return null;
-    }
-  }
+  const scheduleTweet = async (tweet: string) => {}
 
   return (
     <div>
       <h1>Generate Tweets</h1>
-      <p>Generate tweets using all your changed files since the last time you generated</p>
+      <p>Using all the changed files in the last N days, generate tweets to post</p>
       <div style={{ display: "flex", alignItems: "center", marginTop: "10px" }}>
         <label htmlFor="openai-key" style={{ marginRight: "10px" }}>OpenAI Key:</label>
         <input
@@ -139,7 +137,9 @@ export const ReactView = () => {
           style={{ flex: 1, padding: "5px" }}
         />
       </div>
-      <button onClick={() => syncFilesAndGenerateTweets()} style={{marginTop: "20px", cursor: "pointer"}}>Start Syncing</button>
+      <button onClick={() => syncFilesAndGenerateTweets()} style={{marginTop: "20px", cursor: "pointer"}} disabled={generatingTweets}>
+        {generatingTweets ? "Generating..." : "Generate"}
+      </button>
       <hr />
       <div style={{
         marginTop: "20px",

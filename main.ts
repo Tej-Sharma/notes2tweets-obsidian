@@ -1,22 +1,13 @@
 import { LOCAL_STORAGE_KEYS } from 'utils/localeStorage';
-import { ExampleView, VIEW_IDENTIFIER } from './views/tweets/TweetsView';
+import { TweetsView, VIEW_IDENTIFIER } from './views/tweets/TweetsView';
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
-}
-
-
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
-
+export default class Notes2TweetsPlugin extends Plugin {
 	async onload() {
 		// register ExampleView
 		this.registerView(
       VIEW_IDENTIFIER,
-      (leaf) => new ExampleView(leaf)
+      (leaf) => new TweetsView(leaf)
     );
 
 
