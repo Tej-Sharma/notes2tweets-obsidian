@@ -1,21 +1,52 @@
 import OpenAI from "openai";
 import axios from "axios";
+import { v4 as uuidv4 } from 'uuid';
 import { useEffect, useState } from "react";
 import { useApp } from "utils/hooks/useApp";
 import { LOCAL_STORAGE_KEYS } from "utils/localeStorage";
+import { BACKEND_URL } from "utils/constants";
+
+
 
 export const ReactView = () => {
   // get Obsidian app instance using custom hook with context
   const app = useApp();
 
+  // actual generated tweets
   const [syncedTweets, setSyncedTweets] = useState<string[]>([]);
+  // whether is connected to twitter
+  const [needsTwitterConnection, setNeedsTwitterConnection] = useState<boolean>(false);
 
+  // twitter connection flow 
+  const [startTwitterConnect, setStartTwitterConnect] = useState<boolean>(false);
+  const [twitterPin, setTwitterPin] = useState<string>("");
+
+  // show tooltip for disabled schedule tweet button
   const [showDisabledTooltip, setShowDisabledTooltip] = useState<boolean>(false);
 
+  // set user identifier to identify this user from now forth
+  // TODO: improve to better identify to allow for use
+  useEffect(() => {
+    if (!localStorage.getItem(LOCAL_STORAGE_KEYS.USER_IDENTIFIER)) {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.USER_IDENTIFIER, uuidv4());
+    }
+  })
+
+  // set generated tweets from local storage
   useEffect(() => {
     const lastGeneratedTweets = localStorage.getItem(LOCAL_STORAGE_KEYS.LAST_GENERATED_TWEETS);
     if (lastGeneratedTweets) {
       setSyncedTweets(JSON.parse(lastGeneratedTweets));
+    }
+  }, [localStorage]);
+
+  // check if needs twitter connection if AUTH_TOKEN and AUTH_SECRET are not set
+  useEffect(() => {
+    const authToken = localStorage.getItem(LOCAL_STORAGE_KEYS.TWITTER.AUTH_TOKEN);
+    const authSecret = localStorage.getItem(LOCAL_STORAGE_KEYS.TWITTER.AUTH_SECRET);
+
+    if (!authToken || !authSecret) {
+      setNeedsTwitterConnection(true);
     }
   }, [localStorage]);
 
@@ -102,16 +133,108 @@ export const ReactView = () => {
     return modifiedFiles;
   }
 
-  // TODO: schedule tweets
-  const scheduleTweet = async (tweet: string) => {
+  const deleteAllTweets = () => {
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.LAST_GENERATED_TWEETS);
+    setSyncedTweets([]);
+  }
+
+  const startTwitterConnection = async () => {
+    setStartTwitterConnect(true);
+    const response = await axios.post(`${BACKEND_URL}notes2tweets/get-auth-login-url`);
+    const authUrl = response.data.url;
+    const tempAuthToken = response.data.tempAuthToken;
+    const tempAuthTokenSecret = response.data.tempAuthTokenSecret;
+
+    // store in local storage
+    localStorage.setItem(LOCAL_STORAGE_KEYS.TWITTER.TEMP_AUTH_TOKEN, tempAuthToken);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.TWITTER.TEMP_AUTH_SECRET, tempAuthTokenSecret);
+
+    // open authUrl in browser
+    window.open(authUrl, "_blank");
+  }
+
+  const verifyUserPin = async (pin: string) => {
     try {
-      const response = await axios.post("http://127.0.0.1:8000/notes2tweets/schedule-tweet", { tweet: tweet });
+     
+      const response = await axios.post(`${BACKEND_URL}notes2tweets/verify-pin`, { 
+        pin: pin, 
+        tempAuthToken: localStorage.getItem(LOCAL_STORAGE_KEYS.TWITTER.TEMP_AUTH_TOKEN),
+        tempAuthTokenSecret: localStorage.getItem(LOCAL_STORAGE_KEYS.TWITTER.TEMP_AUTH_SECRET),
+        userIdentifier: localStorage.getItem(LOCAL_STORAGE_KEYS.USER_IDENTIFIER),
+      });
+      const { access_token: accessToken, access_token_secret: accessSecret } = response.data;
+
+      if (!accessToken || !accessSecret) {
+        throw new Error("Access token or secret not found in response");
+        return;
+      }
+
+      console.log("Logged in successfully", accessToken, accessSecret);
+
+      // store the access token and secret in local storage
+      localStorage.setItem(LOCAL_STORAGE_KEYS.TWITTER.AUTH_TOKEN, accessToken);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.TWITTER.AUTH_SECRET, accessSecret);
+
+      setStartTwitterConnect(false);
+      setNeedsTwitterConnection(false);
+
+      alert("✅ Successfully connected to Twitter. You can now schedule tweets!")
+    } catch (error) {
+      console.error("Error verifying user pin:", error);
+      alert("❌ Error verifying user pin. Please try the flow again.");
+    }
+  }
+
+  const getNextTweetTime = () => {
+    const lastTweetTime = localStorage.getItem(LOCAL_STORAGE_KEYS.SCHEDULED_TWEETS.LAST_TWEET_TIME);
+    let nextTweetTime = new Date();
+    if (!lastTweetTime) {
+      const now = new Date();
+      const next8am = new Date(now);
+      next8am.setHours(8, 0, 0, 0);
+
+      if (now >= next8am) {
+        next8am.setDate(next8am.getDate() + 1);
+      }
+    
+
+      nextTweetTime = next8am;
+    } else {
+      // otherwise get the last tweet time + 12 hours
+      const lastTweetDate = new Date(lastTweetTime);
+      lastTweetDate.setHours(lastTweetDate.getHours() + 12);
+      nextTweetTime = lastTweetDate;
+    }
+
+    // store in local storage
+    localStorage.setItem(LOCAL_STORAGE_KEYS.SCHEDULED_TWEETS.LAST_TWEET_TIME, nextTweetTime.toISOString());
+
+    // now convert to UTC for backend before sending
+    const nextTweetTimeUTC = new Date(nextTweetTime.getTime() + nextTweetTime.getTimezoneOffset() * 60000);
+
+        // return UTC may 19th 2022 8:00am
+        return new Date(Date.UTC(2024, 4, 19, 8, 0, 0));
+
+    return nextTweetTimeUTC;
+  }
+
+   // TODO: schedule tweets
+   const scheduleTweet = async (tweet: string) => {
+    const nextTweetTime = getNextTweetTime();
+    try {
+      const response = await axios.post(`${BACKEND_URL}notes2tweets/schedule-tweet`, { 
+        tweet: tweet, 
+        userIdentifier: localStorage.getItem(LOCAL_STORAGE_KEYS.USER_IDENTIFIER),
+        scheduledTime: nextTweetTime
+      });
+      alert("✅ Tweet scheduled successfully for " + nextTweetTime.toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' }));
       console.log(response.data);
     } catch (error) {
       console.error("Error generating tweets:", error);
       return null;
     }
   }
+
 
   return (
     <div>
@@ -139,8 +262,36 @@ export const ReactView = () => {
           style={{ flex: 1, padding: "5px" }}
         />
       </div>
-      <button onClick={() => syncFilesAndGenerateTweets()} style={{marginTop: "20px", cursor: "pointer"}}>Start Syncing</button>
+      <div style={{ display: "flex", alignItems: "center", marginTop: "10px", gap: "10px" }}>
+        <button onClick={() => syncFilesAndGenerateTweets()} style={{marginTop: "20px", cursor: "pointer"}}>Start Syncing</button>
+        {needsTwitterConnection && <button onClick={() => startTwitterConnection()} style={{marginTop: "20px", cursor: "pointer"}}>
+          Connect Twitter (X)
+        </button>}
+      </div>
+      {startTwitterConnect && (
+        <div style={{ display: "flex", alignItems: "center", marginTop: "20px" }}>
+          <input
+            id="twitter-pin"
+            type="text"
+            placeholder="Twitter Pin"
+            value={twitterPin}
+            onChange={(e) => setTwitterPin(e.target.value)}
+            style={{ flex: 1, padding: "5px" }}
+          />
+          <button onClick={() => verifyUserPin(twitterPin)} style={{cursor: "pointer"}}>Verify Pin</button>
+        </div>
+      )}
       <hr />
+      {syncedTweets.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
+          <button 
+            onClick={() => deleteAllTweets()} 
+            style={{ cursor: "pointer", color: "red", padding: "10px", borderRadius: "5px" }}
+          >
+            Delete All Tweets
+          </button>
+        </div>
+      )}
       <div style={{
         marginTop: "20px",
         display: "flex",
@@ -176,32 +327,14 @@ export const ReactView = () => {
               >
                   Copy  
               </p>
-              <div style={{ position: "relative", display: "inline-block" }}>
-                <button 
-                  onMouseEnter={() => setShowDisabledTooltip(true)} 
-                  onMouseLeave={() => setShowDisabledTooltip(false)}
-                >
-                  Schedule Tweet
-                </button>
-                <div style={{
-                  visibility: showDisabledTooltip ? "visible" : "hidden",
-                  backgroundColor: "black",
-                  color: "#fff",
-                  textAlign: "center",
-                  borderRadius: "6px",
-                  padding: "5px 0",
-                  position: "absolute",
-                  zIndex: 1,
-                  bottom: "125%",
-                  left: "100%",
-                  marginLeft: "-60px",
-                  width: "120px",
-                  opacity: 0,
-                  transition: "opacity 0.3s"
-                }} className="tooltip">
-                  Coming soon
-                </div>
-              </div>
+              <button 
+                onMouseEnter={() => setShowDisabledTooltip(true)} 
+                onMouseLeave={() => setShowDisabledTooltip(false)}
+                onClick={() => scheduleTweet(tweet)}
+                style={{"cursor": "pointer"}}
+              >
+                Schedule Tweet
+              </button>
               </div>
           </div>
         ))}
