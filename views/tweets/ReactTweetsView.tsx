@@ -8,7 +8,7 @@ export const ReactTweetsView = () => {
   // get Obsidian app instance using custom hook with context
   const app = useApp();
 
-  const [syncedTweets, setSyncedTweets] = useState<string[]>([]);
+  const [syncedTweets, setSyncedTweets] = useState<string[][]>([]);
   const [generatingTweets, setGeneratingTweets] = useState<boolean>(false);
 
   const [showDisabledTooltip, setShowDisabledTooltip] = useState<boolean>(false);
@@ -22,16 +22,19 @@ export const ReactTweetsView = () => {
 
   const getTweetPrompt = (content: string) => {
     return `
-    Based on the content below, think about what are tweets that have a high chance of going viral.
-    And I only want to generate tweets related to deep philosophical points that are very curiosity arising.
-    Only generate tweets for content that would have an alarming hook that taps into a strong human emotion.
-    Otherwise, ignore the content and do not generate tweets.
-    The tweet should be a maximum of 30 words and should be short, concise, and revealing great information after building on the hook
-    in a way that it is very profound and makes the reader feel they have learnt something meaningful that can help them a lot.
-    Here is the content:
+    Based on the content below, create twitter threads comprising of multiple tweets.
+    The first tweet should be very alarming and start off with something that triggers one of the following:
+    - Anger
+    - Fear
+    - Curiosity
+    - Awe
+    - Surprise
+    Each of the tweets should lead into the other and make wanting to click to read the next one.
+    Each tweet should be a maximum of 3 sentences.
+    Here is the content to use to generate the tweet:
     ${content}
-    Give me back a list of tweet strings as a JSON array. It will be parsed by Python's JSON library.
-    ` + '\nReturn in the format: {"tweets": ["tweet1", "tweet2", "tweet3", ...]}';
+    Give me back a list of twitter threads which are arrays of strings as a JSON array. It will be parsed by Python's JSON library.
+    ` + '\nReturn in the format: {"twitterThreads": [["...", "..."], ["...", "..."], ...]}';
   };
 
   const generateTweetsFromFileContent = async (content: string) => {
@@ -53,7 +56,7 @@ export const ReactTweetsView = () => {
       const response = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: inputPrompt }],
-        max_tokens: 300,
+        max_tokens: Math.max(300, Math.min(content.length * 0.5, 650)),
         temperature: 0.8,
       });
 
@@ -77,7 +80,7 @@ export const ReactTweetsView = () => {
     for (const content of fileContents) {
       if (content) {
         const tweets = await generateTweetsFromFileContent(content);
-        allTweets.push(...tweets);
+        allTweets.push(tweets);
       }
     }
     // save to local storage using LAST_GENERATED_TWEETS
@@ -147,7 +150,7 @@ export const ReactTweetsView = () => {
         flexDirection: "column",
         gap: "20px",
       }}>
-        {syncedTweets.map((tweet, index) => (
+        {syncedTweets.map((tweets, index) => (
           <div key={index} style={{
             display: "flex",
             flexDirection: "column",
@@ -156,7 +159,9 @@ export const ReactTweetsView = () => {
             border: "1px solid #ccc",
             borderRadius: "5px",
           }}>
-            <p style={{ fontStyle: "italic", letterSpacing: "0.1em", fontSize: "1.5rem" }}>{tweet}</p>
+            {tweets.map((tweet, index) => (
+              <p key={index} style={{ fontStyle: "italic", letterSpacing: "0.1em", fontSize: "1.5rem" }}>{tweet}</p>
+            ))}
             <div 
               style={{
                 display: "flex",
@@ -172,9 +177,9 @@ export const ReactTweetsView = () => {
                 style={{
                   cursor: "pointer",
                 }}
-                onClick={() => navigator.clipboard.writeText(tweet) }
+                onClick={() => navigator.clipboard.writeText(tweets.join(' ')) }
               >
-                  Copy  
+                  Copy 
               </p>
               <div style={{ position: "relative", display: "inline-block" }}>
                 <button 
