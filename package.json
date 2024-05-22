@@ -15,6 +15,7 @@
 		"@types/node": "^16.11.6",
 		"@types/react": "^18.3.2",
 		"@types/react-dom": "^18.3.0",
+		"@types/uuid": "^9.0.8",
 		"@typescript-eslint/eslint-plugin": "5.29.0",
 		"@typescript-eslint/parser": "5.29.0",
 		"builtin-modules": "3.3.0",
@@ -27,6 +28,8 @@
 		"axios": "^1.6.8",
 		"openai": "^4.47.1",
 		"react": "^18.3.1",
-		"react-dom": "^18.3.1"
+		"react-dom": "^18.3.1",
+		"twitter-api-v2": "^1.16.4",
+		"uuid": "^9.0.1"
 	}
 }
