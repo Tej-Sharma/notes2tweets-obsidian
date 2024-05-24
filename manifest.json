@@ -6,8 +6,5 @@
 	"description": "Generate tweets automatically from all the notes you took",
 	"author": "Tejas Sharma",
 	"authorUrl": "https://x.com/taayjus",
-	"fundingUrl": {
-    "Just a follow, would make my day!": "https://x.com/taayjus"
-  },
 	"isDesktopOnly": false
 }

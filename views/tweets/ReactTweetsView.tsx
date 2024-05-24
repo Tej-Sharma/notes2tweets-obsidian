@@ -3,8 +3,16 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { useApp } from "utils/hooks/useApp";
 import { LOCAL_STORAGE_KEYS } from "utils/localeStorage";
+import { Notes2TweetsSettings } from "main";
 
-export const ReactTweetsView = () => {
+interface ReactTweetsViewProps {
+  settings: Notes2TweetsSettings;
+}
+
+
+export const ReactTweetsView = ({
+  settings
+}: ReactTweetsViewProps) => {
   // get Obsidian app instance using custom hook with context
   const app = useApp();
 
@@ -35,7 +43,7 @@ export const ReactTweetsView = () => {
   };
 
   const generateTweetsFromFileContent = async (content: string) => {
-    const openaiKey = localStorage.getItem('openai-key');
+    const openaiKey = settings.openAIKey;
     if (!openaiKey) {
       console.error("OpenAI key is not set in local storage.");
       alert("OpenAI key is not set");
@@ -68,6 +76,7 @@ export const ReactTweetsView = () => {
       return tweets;
     } catch (error) {
       console.error("Error generating tweets:", error);
+      alert("❌ Error generating tweets. Please ensure your OpenAI key is valid.");
       return [];
     }
   };
@@ -116,18 +125,7 @@ export const ReactTweetsView = () => {
       <h1>Generate Tweets</h1>
       <p>Using all the changed files in the last N days, generate tweets to post</p>
       <div style={{ display: "flex", alignItems: "center", marginTop: "10px" }}>
-        <label htmlFor="openai-key" style={{ marginRight: "10px" }}>OpenAI Key:</label>
-        <input
-          id="openai-key"
-          type="text"
-          placeholder="OpenAI key"
-          defaultValue={localStorage.getItem(LOCAL_STORAGE_KEYS.OPENAI_KEY) || ''}
-          onChange={(e) => localStorage.setItem(LOCAL_STORAGE_KEYS.OPENAI_KEY, e.target.value)}
-          style={{ flex: 1, padding: "5px" }}
-        />
-      </div>
-      <div style={{ display: "flex", alignItems: "center", marginTop: "10px" }}>
-        <label htmlFor="openai-key" style={{ marginRight: "10px" }}>Sync Files Modified In Last N Days:</label>
+        <label htmlFor="openai-key" style={{ marginRight: "10px" }}>Sync files modified in last N days:</label>
         <input
           id="lastModifiedDays"
           type="number"
