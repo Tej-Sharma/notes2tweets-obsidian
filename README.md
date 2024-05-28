@@ -14,5 +14,11 @@ Imagine if it auto-schedules it and posts it for you! Well... this feature is ne
 - [ ] Greater Customization   
 
 
+## Note for myself:
+
+Do release the new versions automatically, do:
+- `git tag <new_version>`
+- `git push origin --tags`
+
 ## Licensing
 See LICENSE.md
