@@ -5,10 +5,16 @@ import { useEffect, useState } from "react";
 import { useApp } from "utils/hooks/useApp";
 import { LOCAL_STORAGE_KEYS } from "utils/localeStorage";
 import { BACKEND_URL } from "utils/constants";
+import { Notes2TweetsSettings } from "main";
+
+interface ReactTweetsViewProps {
+  settings: Notes2TweetsSettings;
+}
 
 
-
-export const ReactTweetsView = () => {
+export const ReactTweetsView = ({
+  settings
+}: ReactTweetsViewProps) => {
   // get Obsidian app instance using custom hook with context
   const app = useApp();
 
@@ -56,7 +62,7 @@ export const ReactTweetsView = () => {
     Then, the rest of the tweets in the thread should lead into the other and make wanting to click to read the next one. They should build on each other in order to convey the information. You can use analogies or examples to further explain better.
     Each of the tweets should use complete sentences yet in a conversational but public facing tone.
     The content may be personal but the tweet should be for an audience of other people viewing it and should not include too many personal details but instead the inner learnings.
-    Do not use emojis, instead use your words to convey the emotions.
+    Do not use emojis, instead use your words to convey the emotions. Do not use any hashtags as they are not effective.
     Each tweet should be a maximum of 3 sentences.
     Here is the content to use to generate the tweet:
     ${content}
@@ -65,7 +71,7 @@ export const ReactTweetsView = () => {
   };
 
   const generateTweetsFromFileContent = async (content: string) => {
-    const openaiKey = localStorage.getItem('openai-key');
+    const openaiKey = settings.openAIKey;
     if (!openaiKey) {
       console.error("OpenAI key is not set in local storage.");
       alert("OpenAI key is not set");
@@ -94,11 +100,15 @@ export const ReactTweetsView = () => {
       }
       const initialPromptOutputJson = JSON.parse(initialPromptOutput);
       console.log("Initial prompt output:", initialPromptOutputJson);
-      const tweets = initialPromptOutputJson.twitterThread || [];
+      let tweets = initialPromptOutputJson.twitterThread || [];
+
+      // remove any hashtags
+      tweets = tweets.map((tweet: string) => tweet.replace(/#[\w]+/g, ''));
 
       return tweets;
     } catch (error) {
       console.error("Error generating tweets:", error);
+      alert("❌ Error generating tweets. Please ensure your OpenAI key is valid.");
       return [];
     }
   };
@@ -227,6 +237,8 @@ export const ReactTweetsView = () => {
 
    // TODO: schedule tweets
    const scheduleTweet = async (tweets: string[], index: number) => {
+    alert('Since Elon now charges for the Twitt - er - X API, I have to figure out a workaround. If this would be of great use to you, please email me at trollgenstudios@gmail.com and I\'ll try to set it up for you.');
+    return;
     const nextTweetTime = getNextTweetTime();
     try {
       const response = await axios.post(`${BACKEND_URL}notes2tweets/schedule-tweet`, { 
@@ -258,18 +270,7 @@ export const ReactTweetsView = () => {
       <h1>Generate Tweets</h1>
       <p>Using all the changed files in the last N days, generate tweets to post</p>
       <div style={{ display: "flex", alignItems: "center", marginTop: "10px" }}>
-        <label htmlFor="openai-key" style={{ marginRight: "10px" }}>OpenAI Key:</label>
-        <input
-          id="openai-key"
-          type="text"
-          placeholder="OpenAI key"
-          defaultValue={localStorage.getItem(LOCAL_STORAGE_KEYS.OPENAI_KEY) || ''}
-          onChange={(e) => localStorage.setItem(LOCAL_STORAGE_KEYS.OPENAI_KEY, e.target.value)}
-          style={{ flex: 1, padding: "5px" }}
-        />
-      </div>
-      <div style={{ display: "flex", alignItems: "center", marginTop: "10px" }}>
-        <label htmlFor="openai-key" style={{ marginRight: "10px" }}>Sync Files Modified In Last N Days:</label>
+        <label htmlFor="openai-key" style={{ marginRight: "10px" }}>Sync files modified in last N days:</label>
         <input
           id="lastModifiedDays"
           type="number"
