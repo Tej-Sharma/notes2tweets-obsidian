@@ -235,9 +235,9 @@ export const ReactTweetsView = ({
     return nextTweetTimeUTC;
   }
 
-   // TODO: schedule tweets
+   // TODO: twitter now charges for API, have to figure out a way for user to give their credentials without having to use a backend
    const scheduleTweet = async (tweets: string[], index: number) => {
-    alert('Since Elon now charges for the Twitt - er - X API, I have to figure out a workaround. If this would be of great use to you, please email me at trollgenstudios@gmail.com and I\'ll try to set it up for you.');
+    alert('Since Elon now charges for the Twi - er, I mean - X API, I have to figure out a workaround. If this would be of great use to you, please email me at trollgenstudios@gmail.com and I\'ll try to set it up for you.');
     return;
     const nextTweetTime = getNextTweetTime();
     try {
@@ -259,10 +259,6 @@ export const ReactTweetsView = ({
       return null;
     }
   }
-
-  useEffect(() => {
-    console.log("Synced tweets:", syncedTweets);
-  }, [syncedTweets]);
 
 
   return (
