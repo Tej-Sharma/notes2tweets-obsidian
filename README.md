@@ -22,3 +22,5 @@ Do release the new versions automatically, do:
 
 ## Licensing
 See LICENSE.md
+
+https://github.com/Tej-Sharma/notes2tweets-obsidian/blob/fbba52cbe9fd364f70377f59cec5ac85465c7aeb/open-source-plugin.mp4
