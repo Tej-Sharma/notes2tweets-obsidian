@@ -1,5 +1,5 @@
-// export const BACKEND_URL = "https://testbackend.herokuapp.com/";
-export const BACKEND_URL = "http://localhost:8000/";
+export const BACKEND_URL = "https://tutils-9ad81be56d35.herokuapp.com/";
+// export const BACKEND_URL = "http://localhost:8000/";
 
 export const DEFAULT_TWEETS_PROMPT = `A tweet is basically a single message. Based on the content below, create a single twitter thread (chains of tweets) comprising of multiple tweets that explain a concept fully using at least 5 tweets with examples, analogies, and allusions. The thread starts with something attention grabbing and ends with a conclusion that wraps up the idea.
 The twitter thread is directed to a reader and should use an appropriate tone and writing style to connect with the reader and address them.
