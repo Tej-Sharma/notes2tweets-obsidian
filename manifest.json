@@ -3,7 +3,7 @@
 	"name": "Notes 2 Tweets",
 	"version": "1.0.3",
 	"minAppVersion": "0.15.0",
-	"description": "Generate tweets automatically from all the notes you took",
+	"description": "Generate and schedule tweets automatically from your notes",
 	"author": "Tejas Sharma",
 	"authorUrl": "https://x.com/taayjus",
 	"isDesktopOnly": false

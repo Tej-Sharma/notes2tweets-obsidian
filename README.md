@@ -1,8 +1,9 @@
 # Notes2Tweets
 
-Writing a lot and feel like sharing it with the rest of the world? Too busy or too lazy to write a tweet? I was struggling with time so I built this tool to convert everything I write in Obsidan
+Generate and schedule tweets automatically from your notes. Use Obsidian like you normally do and press 1 button to convert your notes into tweets.
 
-Use the button on the sidebar on the left (the Twitter logo), enter your OpenAI key, and boom, what it will do is all the notes you took since the last sync, it will convert them into tweets and display them to you.
+Writing a lot and feel like sharing it with the rest of the world? Too busy or too lazy to write a tweet? I was struggling with this myself and wanted to share all my learnings with the world automagically, so I built this. Hope it's useful to you as well.
+
 
 ## Demo
 https://github.com/Tej-Sharma/notes2tweets-obsidian/assets/63019435/f182f948-a93b-4624-be01-2cb5020618ab
@@ -17,12 +18,14 @@ https://github.com/Tej-Sharma/notes2tweets-obsidian/assets/63019435/f182f948-a93
 - [ ] Further customization parameters
 - [ ] Generating images for tweets
 
+## Setup
 
-## Note for myself:
+1. Install the plugin
+2. Go to the settings -> Notes 2 Tweets -> Set your API keys
+3. [Optional] If you don't want to set up OpenAI and Twitter APIs yourself, you can purchase a license for the plugin to handle this for you (this is because these APIs cost a lot of money to use and I can't afford to pay for everyone's usage)
+4. Open the Twitter logo in the left sidebar
+5. Boom! Press generate and schedule the ones you like 
 
-Do release the new versions automatically, do:
-- `git tag <new_version>`
-- `git push origin --tags`
 
 ## Licensing
 See LICENSE.md
