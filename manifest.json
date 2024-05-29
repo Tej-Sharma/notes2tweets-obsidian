@@ -1,7 +1,7 @@
 {
 	"id": "notes2tweets",
 	"name": "Notes 2 Tweets",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"minAppVersion": "0.15.0",
 	"description": "Generate tweets automatically from all the notes you took",
 	"author": "Tejas Sharma",

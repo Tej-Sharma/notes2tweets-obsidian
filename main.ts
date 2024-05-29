@@ -1,13 +1,22 @@
 import { LOCAL_STORAGE_KEYS } from 'utils/localeStorage';
 import { TweetsView, VIEW_IDENTIFIER } from './views/tweets/TweetsView';
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
+import { DEFAULT_TWEETS_PROMPT } from 'utils/constants';
 
 export interface Notes2TweetsSettings {
 	openAIKey: string;
+	twitterAPIKey: string;
+	twitterAPISecret: string;
+	tweetsGenPrompt: string;
+	licenseKey: string;
 }
 
 const DEFAULT_NOTES2TWEETS_SETTINGS: Notes2TweetsSettings = {
-	openAIKey: ''
+	openAIKey: '',
+	twitterAPIKey: '',
+	twitterAPISecret: '',
+	tweetsGenPrompt: DEFAULT_TWEETS_PROMPT,
+	licenseKey: ''
 }
 
 export default class Notes2TweetsPlugin extends Plugin {
@@ -90,6 +99,16 @@ class Notes2TweetsSettingsTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		containerEl.createEl('h2', {text: 'Notes2Tweets Settings'});
+
+		containerEl.createEl('h5', {text: 'Method 1: Manual Approach'});
+
+		containerEl.createEl('p', {text: 'If you want to use your OpenAI and X (Twitter) API credentials, please fill the following fields.'});
+
+		// link to get twitter api key
+		containerEl.createEl('a', {href: 'https://developer.twitter.com/en/apps', text: 'Get X Keys'});
+		containerEl.createEl('p', {text: ''});
+
 		new Setting(containerEl)
 			.setName('OpenAI API Key')
 			.setDesc('This can be obtained from OpenAI playground')
@@ -100,5 +119,65 @@ class Notes2TweetsSettingsTab extends PluginSettingTab {
 					this.plugin.settings.openAIKey = value;
 					await this.plugin.saveSettings();
 				}));
+		
+		new Setting(containerEl)
+			.setName('X (Twitter) API KEY')
+			.setDesc('If you want to handle Twitter API through your credentials')
+			.addText(text => text
+				.setPlaceholder('Enter your secret')
+				.setValue(this.plugin.settings.twitterAPIKey)
+				.onChange(async (value) => {
+					this.plugin.settings.twitterAPIKey = value;
+					await this.plugin.saveSettings();
+				}));
+		
+		new Setting(containerEl)
+			.setName('X (Twitter) API SECRET')
+			.setDesc('If you want to handle Twitter API through your credentials')
+			.addText(text => text
+				.setPlaceholder('Enter your secret')
+				.setValue(this.plugin.settings.twitterAPISecret)
+				.onChange(async (value) => {
+					this.plugin.settings.twitterAPISecret = value;
+					await this.plugin.saveSettings();
+				}));
+		
+		// not use your own keys and support development
+		containerEl.createEl('h5', {text: 'Method 2: Lazy Approach'});
+		containerEl.createEl('p', {text: 'If you want the plugin to handle everything and also to support development, you can purchase a subscription below and the plugin will handle all the keys for you :)'});
+
+		// link to purchase subscription
+		containerEl.createEl('a', {href: 'https://beemohive.gumroad.com/l/zfoyg', text: 'Purchase Subscription'});
+		containerEl.createEl('p', {text: ''});
+		
+
+		new Setting(containerEl)
+		.setName('License Key')
+		.setDesc('If you want the plugin to handle everything and cover the costs of OpenAI and Twitter API')
+		.addText(text => text
+			.setPlaceholder('Enter key obtained after purchase')
+			.setValue(this.plugin.settings.licenseKey)
+			.onChange(async (value) => {
+				this.plugin.settings.licenseKey = value;
+				await this.plugin.saveSettings();
+			}));
+			
+
+		containerEl.createEl('h5', {text: 'Other Customizations'});
+
+		containerEl.createEl('p', {text: 'You can adjust the prompt here. You must not include the file content to the prompt or the output format (this will be suffixed to your prompt'});
+
+		// do a large text box
+		new Setting(containerEl).setName('Tweets Gen Prompt').addTextArea(text => {
+			text.inputEl.style.width = '100%';
+			text.setPlaceholder(DEFAULT_TWEETS_PROMPT)
+				.setValue(this.plugin.settings.tweetsGenPrompt)
+				.onChange(async (value) => {
+					this.plugin.settings.tweetsGenPrompt = value;
+					await this.plugin.saveSettings();
+				});
+		});
+
+
 	}
 }

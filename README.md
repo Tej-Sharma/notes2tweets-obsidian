@@ -9,9 +9,11 @@ Imagine if it auto-schedules it and posts it for you! Well... this feature is ne
 ## Roadmap
 
 - [x] Convert newly written notes to tweets
-- [ ] Auto-schedule tweets
-- [ ] Twitter Threads
-- [ ] Greater Customization   
+- [x] Auto-schedule tweets
+- [x] Twitter Threads
+- [x] Prompt Customization
+- [ ] Further customization parameters
+- [ ] Generating images for tweets
 
 
 ## Note for myself:

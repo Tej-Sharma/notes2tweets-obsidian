@@ -29,7 +29,6 @@ export const ReactTweetsView = ({
   const [twitterPin, setTwitterPin] = useState<string>("");
 
   // set user identifier to identify this user from now forth
-  // TODO: improve to better identify to allow for use
   useEffect(() => {
     if (!localStorage.getItem(LOCAL_STORAGE_KEYS.USER_IDENTIFIER)) {
       localStorage.setItem(LOCAL_STORAGE_KEYS.USER_IDENTIFIER, uuidv4());
@@ -54,17 +53,13 @@ export const ReactTweetsView = ({
     }
   }, [localStorage]);
 
+  const isSubscribedUser = () => {
+    return settings.licenseKey !== '';
+  }
+
   const getTweetPrompt = (content: string) => {
     return `
-    A tweet is basically a single message. Based on the content below, create a single twitter thread (chains of tweets) comprising of multiple tweets that explain a concept fully using at least 5 tweets with examples, analogies, and allusions. The thread starts with something attention grabbing and ends with a conclusion that wraps up the idea.
-    The twitter thread is directed to a reader and should use an appropriate tone and writing style to connect with the reader and address them.
-    The first tweet begins the thread and should be made up of two sentences. The first sentence or phrase introduces the concept in a way that hooks the reader in by triggering anger, curiosity, fear, shock, or awe. This hook should be a complete sentence and directed to a person scrolling by. Then the second sentence should be an introduction to the tweets that are to come with another attention grabbing sentence.
-    Then, the rest of the tweets in the thread should lead into the other and make wanting to click to read the next one. They should build on each other in order to convey the information. You can use analogies or examples to further explain better.
-    Each of the tweets should use complete sentences yet in a conversational but public facing tone.
-    The content may be personal but the tweet should be for an audience of other people viewing it and should not include too many personal details but instead the inner learnings.
-    Do not use emojis, instead use your words to convey the emotions. Do not use any hashtags as they are not effective.
-    Each tweet should be a maximum of 3 sentences.
-    Here is the content to use to generate the tweet:
+    ${settings.tweetsGenPrompt}
     ${content}
     Give me back the twitter thread as an arrays of strings (representing the tweets) as a JSON array. Make sure to generate two sentences for the first tweet of the thread. It will be parsed by Python's JSON library.
     ` + '\nReturn in the format: {"twitterThread": ["...", "..."]}';
@@ -72,46 +67,83 @@ export const ReactTweetsView = ({
 
   const generateTweetsFromFileContent = async (content: string) => {
     const openaiKey = settings.openAIKey;
-    if (!openaiKey) {
+    if (!openaiKey && !isSubscribedUser()) {
       console.error("OpenAI key is not set in local storage.");
-      alert("OpenAI key is not set");
+      alert("OpenAI key is not set in settings. Please go to settings and set it.");
       return [];
     }
-
-    const openai = new OpenAI({
-      apiKey: openaiKey,
-      dangerouslyAllowBrowser: true 
-    });
 
     const inputPrompt = getTweetPrompt(content);
+    let tweets = []
 
-    try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: inputPrompt }],
-        max_tokens: Math.max(400, Math.min(content.length * 0.5, 800)),
-        temperature: 0.8,
+    // for non-subscribed users, generate using their OpenAI Key locally
+    if (openaiKey && !isSubscribedUser()) {
+      const openai = new OpenAI({
+        apiKey: openaiKey,
+        dangerouslyAllowBrowser: true 
       });
 
-      const initialPromptOutput = response.choices[0].message.content;
 
-      if (!initialPromptOutput) {
+      try {
+        const response = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: inputPrompt }],
+          max_tokens: Math.max(400, Math.min(content.length * 0.5, 800)),
+          temperature: 0.8,
+        });
+
+        const initialPromptOutput = response.choices[0].message.content;
+
+        if (!initialPromptOutput) {
+          return [];
+        }
+        const initialPromptOutputJson = JSON.parse(initialPromptOutput);
+        tweets = initialPromptOutputJson.twitterThread || [];
+      } catch (error) {
+        console.error("Error generating tweets:", error);
+        alert("❌ Error generating tweets. Please ensure your OpenAI key is valid.");
         return [];
       }
-      const initialPromptOutputJson = JSON.parse(initialPromptOutput);
-      console.log("Initial prompt output:", initialPromptOutputJson);
-      let tweets = initialPromptOutputJson.twitterThread || [];
-
-      // remove any hashtags
-      tweets = tweets.map((tweet: string) => tweet.replace(/#[\w]+/g, ''));
-
-      return tweets;
-    } catch (error) {
-      console.error("Error generating tweets:", error);
-      alert("❌ Error generating tweets. Please ensure your OpenAI key is valid.");
-      return [];
+    } else if (isSubscribedUser()) {
+      // for subscribed users, generate using backend
+      try {
+        const response = await axios.post(`${BACKEND_URL}notes2tweets/generate-tweets`, { 
+          prompt: inputPrompt,
+          licenseKey: settings.licenseKey,
+        });
+        if (response.data.error) {
+          throw new Error(response.data.error);
+        }
+        tweets = response.data.twitterThread || [];
+      } catch (error) {
+        console.error("Error generating tweets:", error);
+        alert(error);
+        return [];
+      }
     }
+
+    // now clean the tweets
+    
+    // remove any hashtags
+    tweets = tweets.map((tweet: string) => tweet.replace(/#[\w]+/g, ''));
+
+    return tweets;
   };
+
+  const generateTweetsLocally = async (fileContents: (string | undefined)[]) => {
+    const allTweets = [];
+    for (const content of fileContents) {
+      if (content) {
+        const tweets = await generateTweetsFromFileContent(content);
+        allTweets.push(tweets);
+      }
+    }
+    // save to local storage using LAST_GENERATED_TWEETS
+    localStorage.setItem(LOCAL_STORAGE_KEYS.LAST_GENERATED_TWEETS, JSON.stringify(allTweets));
+
+    return allTweets;
+  };
+
 
   const generateTweets = async (fileContents: (string | undefined)[]) => {
     const allTweets = [];
@@ -137,6 +169,14 @@ export const ReactTweetsView = ({
 
       // get files modified in last 24 hours
       const modifiedFiles = files.filter((file) => file.stat.mtime > Date.now() - 1000 * 60 * 60 * 24 * parseInt(LAST_DAYS_MODIFIED));
+
+      // if no files modified in last 24 hours, return
+      if (modifiedFiles.length === 0) {
+        setGeneratingTweets(false);
+        alert("No files modified in the last " + LAST_DAYS_MODIFIED + " days. Make some changes to some files to generate tweets.");
+        return;
+      }
+
       // get file contents
       const fileContents = await Promise.all(modifiedFiles.map((file) => app?.vault.read(file)));
 
@@ -158,9 +198,30 @@ export const ReactTweetsView = ({
     setSyncedTweets([]);
   }
 
+  /**
+   * Starts the X (Twitter) connection flow by generating a auth url to login
+   * The user will be redirected to this url and will then get a pin back that they will paste in
+   * @returns 
+   */
   const startTwitterConnection = async () => {
+    if (!isSubscribedUser() && (!settings.twitterAPIKey || !settings.twitterAPISecret)) {
+      alert("Please set your Twitter API key and secret in the settings or purchase a subscription for the plugin to handle it for you.");
+      return;
+    }
     setStartTwitterConnect(true);
-    const response = await axios.post(`${BACKEND_URL}notes2tweets/get-auth-login-url`);
+
+    const response = await axios.post(`${BACKEND_URL}notes2tweets/get-auth-login-url`, {
+      twitterAPIKey: settings.twitterAPIKey,
+      twitterAPISecret: settings.twitterAPISecret,
+      licenseKey: settings.licenseKey,    
+    });
+    // if response.data.error
+    if (response.data.error) {
+      alert(response.data.error);
+      setStartTwitterConnect(false);
+      return;
+    }
+
     const authUrl = response.data.url;
     const tempAuthToken = response.data.tempAuthToken;
     const tempAuthTokenSecret = response.data.tempAuthTokenSecret;
@@ -173,6 +234,11 @@ export const ReactTweetsView = ({
     window.open(authUrl, "_blank");
   }
 
+  /**
+   * After logging in from the auth url, they will paste the link and this will verify it
+   * @param pin - string user pastes that they got from X
+   * @returns 
+   */
   const verifyUserPin = async (pin: string) => {
     try {
      
@@ -181,6 +247,9 @@ export const ReactTweetsView = ({
         tempAuthToken: localStorage.getItem(LOCAL_STORAGE_KEYS.TWITTER.TEMP_AUTH_TOKEN),
         tempAuthTokenSecret: localStorage.getItem(LOCAL_STORAGE_KEYS.TWITTER.TEMP_AUTH_SECRET),
         userIdentifier: localStorage.getItem(LOCAL_STORAGE_KEYS.USER_IDENTIFIER),
+        twitterAPIKey: settings.twitterAPIKey,
+        twitterAPISecret: settings.twitterAPISecret,
+        licenseKey: settings.licenseKey,
       });
       const { access_token: accessToken, access_token_secret: accessSecret } = response.data;
 
@@ -208,7 +277,7 @@ export const ReactTweetsView = ({
   const getNextTweetTime = () => {
     const lastTweetTime = localStorage.getItem(LOCAL_STORAGE_KEYS.SCHEDULED_TWEETS.LAST_TWEET_TIME);
     let nextTweetTime = new Date();
-    if (!lastTweetTime) {
+    if (!lastTweetTime || new Date(lastTweetTime) < new Date()) {
       const now = new Date();
       const next8am = new Date(now);
       next8am.setHours(8, 0, 0, 0);
@@ -235,10 +304,12 @@ export const ReactTweetsView = ({
     return nextTweetTimeUTC;
   }
 
-   // TODO: twitter now charges for API, have to figure out a way for user to give their credentials without having to use a backend
    const scheduleTweet = async (tweets: string[], index: number) => {
-    alert('Since Elon now charges for the Twi - er, I mean - X API, I have to figure out a workaround. If this would be of great use to you, please email me at trollgenstudios@gmail.com and I\'ll try to set it up for you.');
-    return;
+    if (needsTwitterConnection) {
+      alert("Please connect to X (Twitter) first to schedule tweets using the button above.");
+      return;
+    }
+    
     const nextTweetTime = getNextTweetTime();
     try {
       const response = await axios.post(`${BACKEND_URL}notes2tweets/schedule-tweet`, { 
@@ -246,7 +317,11 @@ export const ReactTweetsView = ({
         userIdentifier: localStorage.getItem(LOCAL_STORAGE_KEYS.USER_IDENTIFIER),
         scheduledTime: nextTweetTime
       });
-      alert("✅ Tweet scheduled successfully for " + nextTweetTime.toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' }));
+      
+      // Convert nextTweetTime to local time from UTC
+      const nextTweetTimeLocal = new Date(nextTweetTime.getTime() - nextTweetTime.getTimezoneOffset() * 60000);
+
+      alert("✅ Tweet scheduled successfully for " + nextTweetTimeLocal.toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' }));
       console.log(response.data);
 
       // delete this tweet
@@ -263,7 +338,7 @@ export const ReactTweetsView = ({
 
   return (
     <div>
-      <h1>Generate Tweets</h1>
+      <h1>Generate & Schedule Tweets</h1>
       <p>Using all the changed files in the last N days, generate tweets to post</p>
       <div style={{ display: "flex", alignItems: "center", marginTop: "10px" }}>
         <label htmlFor="openai-key" style={{ marginRight: "10px" }}>Sync files modified in last N days:</label>
