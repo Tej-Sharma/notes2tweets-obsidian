@@ -257,9 +257,7 @@ export const ReactTweetsView = ({
         throw new Error("Access token or secret not found in response");
         return;
       }
-
-      console.log("Logged in successfully", accessToken, accessSecret);
-
+      
       // store the access token and secret in local storage
       localStorage.setItem(LOCAL_STORAGE_KEYS.TWITTER.AUTH_TOKEN, accessToken);
       localStorage.setItem(LOCAL_STORAGE_KEYS.TWITTER.AUTH_SECRET, accessSecret);
@@ -285,7 +283,6 @@ export const ReactTweetsView = ({
       if (now >= next8am) {
         next8am.setDate(next8am.getDate() + 1);
       }
-    
 
       nextTweetTime = next8am;
     } else {
@@ -322,7 +319,6 @@ export const ReactTweetsView = ({
       const nextTweetTimeLocal = new Date(nextTweetTime.getTime() - nextTweetTime.getTimezoneOffset() * 60000);
 
       alert("✅ Tweet scheduled successfully for " + nextTweetTimeLocal.toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' }));
-      console.log(response.data);
 
       // delete this tweet
       const newSyncedTweets = [...syncedTweets];
