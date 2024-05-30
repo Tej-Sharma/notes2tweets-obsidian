@@ -1,7 +1,7 @@
 {
 	"id": "notes2tweets",
 	"name": "Notes 2 Tweets",
-	"version": "1.0.3",
+	"version": "1.0.5",
 	"minAppVersion": "0.15.0",
 	"description": "Generate and schedule tweets automatically from your notes",
 	"author": "Tejas Sharma",
